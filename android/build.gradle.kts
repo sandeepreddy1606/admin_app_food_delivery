@@ -12,10 +12,17 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
 }
 
-tasks.register<Delete>("clean") {
+tasks.register("clean") {
     delete(rootProject.layout.buildDirectory)
+}
+
+buildscript {
+    dependencies {
+        classpath("com.google.gms:google-services:4.3.15")  // Fixed - double quotes and parentheses
+    }
 }

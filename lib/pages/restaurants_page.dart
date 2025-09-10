@@ -22,16 +22,10 @@ class _RestaurantsPageState extends State<RestaurantsPage> {
         foregroundColor: Colors.white,
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AddEditRestaurantPage()),
-          );
-          // Refresh the page after adding restaurant
-          if (result == true) {
-            setState(() {});
-          }
-        },
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AddEditRestaurantPage()),
+        ),
         backgroundColor: Colors.orange,
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -63,24 +57,6 @@ class _RestaurantsPageState extends State<RestaurantsPage> {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error, size: 64, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text('Error: ${snapshot.error}'),
-                        ElevatedButton(
-                          onPressed: () => setState(() {}),
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(
                     child: Column(
@@ -89,8 +65,6 @@ class _RestaurantsPageState extends State<RestaurantsPage> {
                         Icon(Icons.restaurant, size: 64, color: Colors.grey),
                         SizedBox(height: 16),
                         Text('No restaurants found', style: TextStyle(fontSize: 18, color: Colors.grey)),
-                        SizedBox(height: 8),
-                        Text('Add your first restaurant!', style: TextStyle(color: Colors.grey)),
                       ],
                     ),
                   );
@@ -102,32 +76,13 @@ class _RestaurantsPageState extends State<RestaurantsPage> {
                          restaurant.cuisineType.toLowerCase().contains(_searchQuery.toLowerCase());
                 }).toList();
 
-                if (restaurants.isEmpty) {
-                  return const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('No restaurants match your search', style: TextStyle(fontSize: 18, color: Colors.grey)),
-                      ],
-                    ),
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    setState(() {});
-                    await Future.delayed(const Duration(seconds: 1));
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: restaurants.length,
+                  itemBuilder: (context, index) {
+                    final restaurant = restaurants[index];
+                    return _buildRestaurantCard(restaurant);
                   },
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: restaurants.length,
-                    itemBuilder: (context, index) {
-                      final restaurant = restaurants[index];
-                      return _buildRestaurantCard(restaurant);
-                    },
-                  ),
                 );
               },
             ),
@@ -218,7 +173,7 @@ class _RestaurantsPageState extends State<RestaurantsPage> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(Icons.star, color: Colors.amber, size: 16),
+                      Icon(Icons.star, color: Colors.amber, size: 16),
                       Text(' ${restaurant.rating}'),
                       const Spacer(),
                       Text('${restaurant.deliveryTime} min • \$${restaurant.deliveryFee}'),
