@@ -33,6 +33,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                 onSelected: (status) async {
                   await FirestoreService.updateOrderStatus(order.id, status);
                   setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Order status updated to ${status.displayName}')),
+                  );
                 },
                 itemBuilder: (context) => OrderStatus.values
                     .map((status) => PopupMenuItem(
@@ -54,9 +57,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     padding: const EdgeInsets.all(16),
                     child: Row(
                       children: [
-                        Icon(Icons.info, color: Colors.blue),
+                        const Icon(Icons.info, color: Colors.blue),
                         const SizedBox(width: 8),
-                        Text('Status: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text('Status: ', style: TextStyle(fontWeight: FontWeight.bold)),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                           decoration: BoxDecoration(
@@ -80,60 +83,21 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Customer Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const Text('Delivery Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.person, color: Colors.grey),
-                            const SizedBox(width: 8),
-                            Text(order.customerName),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.phone, color: Colors.grey),
-                            const SizedBox(width: 8),
-                            Text(order.customerPhone),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
                         Row(
                           children: [
                             const Icon(Icons.location_on, color: Colors.grey),
                             const SizedBox(width: 8),
-                            Expanded(child: Text(order.deliveryAddress)),
-                          ],
-                        ),
-                        if (order.notes?.isNotEmpty == true) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.note, color: Colors.grey),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(order.notes!)),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Restaurant Info
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Restaurant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.restaurant, color: Colors.grey),
-                            const SizedBox(width: 8),
-                            Text(order.restaurantName),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(order.address.label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  Text(order.address.fullAddress),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -151,6 +115,27 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                         const Text('Order Items', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         ...order.items.map((item) => _buildOrderItem(item)),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Payment Info
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Payment Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.payment, color: Colors.grey),
+                            const SizedBox(width: 8),
+                            Text(order.payment.displayName),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -179,6 +164,13 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                             Text('\$${order.deliveryFee.toStringAsFixed(2)}'),
                           ],
                         ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Tax:'),
+                            Text('\$${order.tax.toStringAsFixed(2)}'),
+                          ],
+                        ),
                         const Divider(),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -187,16 +179,6 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                             Text('\$${order.total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold)),
                           ],
                         ),
-                        if (order.paymentMethod != null) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Payment Method:'),
-                              Text(order.paymentMethod!),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -215,19 +197,9 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
                           children: [
                             const Icon(Icons.schedule, color: Colors.grey),
                             const SizedBox(width: 8),
-                            Text('Ordered: ${_formatDateTime(order.createdAt)}'),
+                            Text('Placed: ${_formatDateTime(order.placedAt)}'),
                           ],
                         ),
-                        if (order.estimatedDeliveryTime != null) ...[
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.delivery_dining, color: Colors.grey),
-                              const SizedBox(width: 8),
-                              Text('Estimated Delivery: ${_formatDateTime(order.estimatedDeliveryTime!)}'),
-                            ],
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -241,23 +213,70 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
   }
 
   Widget _buildOrderItem(OrderItem item) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+      ),
       child: Row(
         children: [
-          Text('${item.quantity}x', style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(width: 8),
+          // Item image (if available)
+          if (item.imageUrl?.isNotEmpty == true)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                item.imageUrl!,
+                width: 50,
+                height: 50,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 50,
+                  height: 50,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.fastfood, color: Colors.grey),
+                ),
+              ),
+            ),
+          if (item.imageUrl?.isNotEmpty == true) const SizedBox(width: 12),
+          
+          // Item details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(item.name),
-                if (item.specialInstructions?.isNotEmpty == true)
-                  Text('Note: ${item.specialInstructions}', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                Row(
+                  children: [
+                    Text(
+                      '${item.quantity}x',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        item.name,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+                if (item.description?.isNotEmpty == true) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    item.description!,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
             ),
           ),
-          Text('\$${item.totalPrice.toStringAsFixed(2)}'),
+          
+          // Price
+          Text(
+            '\$${item.totalPrice.toStringAsFixed(2)}',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
         ],
       ),
     );

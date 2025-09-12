@@ -7,35 +7,32 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:foodie_admin_panel/main.dart';
 
 void main() {
   testWidgets('Admin panel smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const FoodieAdminApp());
+    await tester.pumpWidget(const MyApp()); // CHANGED: FoodieAdminApp → MyApp
 
-    // Verify that our admin panel loads correctly
-    expect(find.text('Foodie Admin'), findsOneWidget);
-    expect(find.text('Dashboard'), findsOneWidget);
-    expect(find.text('Welcome back, Admin!'), findsOneWidget);
+    // Since your app starts with login page, test for login page elements
+    expect(find.text('Admin Login'), findsOneWidget);
+    expect(find.text('Login as Admin'), findsOneWidget);
     
-    // Verify navigation items exist
-    expect(find.text('Restaurants'), findsOneWidget);
-    expect(find.text('Menu Items'), findsOneWidget);
-    expect(find.text('Orders'), findsOneWidget);
-    expect(find.text('Analytics'), findsOneWidget);
+    // Verify login form elements exist
+    expect(find.byType(TextFormField), findsNWidgets(2)); // Email and Password fields
+    expect(find.text('Login'), findsOneWidget);
   });
 
-  testWidgets('Navigation test', (WidgetTester tester) async {
+  testWidgets('Navigation to register test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const FoodieAdminApp());
+    await tester.pumpWidget(const MyApp()); // CHANGED: FoodieAdminApp → MyApp
 
-    // Tap on the Restaurants navigation item
-    await tester.tap(find.text('Restaurants'));
-    await tester.pump();
+    // Tap on the register navigation link
+    await tester.tap(find.text('Don\'t have an account? Register'));
+    await tester.pumpAndSettle(); // Wait for navigation to complete
 
-    // Verify that we're now on the Restaurant Management page
-    expect(find.text('Restaurant Management'), findsOneWidget);
+    // Verify that we're now on the Registration page
+    expect(find.text('Admin Registration'), findsOneWidget);
+    expect(find.text('Register Admin'), findsOneWidget);
   });
 }

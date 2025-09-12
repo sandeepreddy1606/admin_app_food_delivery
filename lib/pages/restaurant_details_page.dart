@@ -20,6 +20,12 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> with Sing
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Debug menu items on page load
+    _debugMenuItems();
+  }
+
+  Future<void> _debugMenuItems() async {
+    await FirestoreService.debugMenuItems(widget.restaurant.id);
   }
 
   @override
@@ -43,9 +49,12 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> with Sing
             onSelected: (value) {
               if (value == 'delete') {
                 _showDeleteDialog();
+              } else if (value == 'debug') {
+                _debugMenuItems();
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(value: 'debug', child: Text('Debug Menu Items')),
               const PopupMenuItem(value: 'delete', child: Text('Delete Restaurant')),
             ],
           ),
@@ -200,26 +209,44 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> with Sing
   Widget _buildMenuTab() {
     return Column(
       children: [
-        // Add Menu Item Button
+        // Add Menu Item Button & Debug
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
-          child: ElevatedButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AddEditMenuItemPage(restaurantId: widget.restaurant.id),
+          child: Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddEditMenuItemPage(restaurantId: widget.restaurant.id),
+                      ),
+                    );
+                    if (result == true) {
+                      setState(() {});
+                    }
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Menu Item'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                ),
               ),
-            ),
-            icon: const Icon(Icons.add),
-            label: const Text('Add Menu Item'),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _debugMenuItems,
+                icon: const Icon(Icons.bug_report),
+                label: const Text('Debug'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+              ),
+            ],
           ),
         ),
         
         // Category Filter
-        StreamBuilder<List<String>>(
-          stream: FirestoreService.getMenuCategories(widget.restaurant.id).asStream(),
+        FutureBuilder<List<String>>(
+          future: FirestoreService.getMenuCategories(widget.restaurant.id),
           builder: (context, snapshot) {
             if (!snapshot.hasData) return const SizedBox();
             final categories = ['All', ...snapshot.data!];
@@ -250,39 +277,144 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> with Sing
           },
         ),
 
-        // Menu Items
+        // Menu Items with Enhanced Error Handling
         Expanded(
           child: StreamBuilder<List<MenuItem>>(
             stream: FirestoreService.getMenuItems(widget.restaurant.id),
             builder: (context, snapshot) {
+              // Loading state
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.menu_book, size: 64, color: Colors.grey),
+                      CircularProgressIndicator(),
                       SizedBox(height: 16),
-                      Text('No menu items found', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                      Text('Loading menu items...'),
+                    ],
+                  ),
+                );
+              }
+              
+              // Error state
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error, size: 64, color: Colors.red),
+                      const SizedBox(height: 16),
+                      const Text('Error loading menu items', 
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Text('${snapshot.error}', textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () => setState(() {}),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Retry'),
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton.icon(
+                            onPressed: _debugMenuItems,
+                            icon: const Icon(Icons.bug_report),
+                            label: const Text('Debug'),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }
+              
+              // No data state
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.menu_book, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text('No menu items found', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Text('Restaurant ID: ${widget.restaurant.id}', 
+                          style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AddEditMenuItemPage(restaurantId: widget.restaurant.id),
+                                ),
+                              );
+                              if (result == true) {
+                                setState(() {});
+                              }
+                            },
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add First Item'),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton.icon(
+                            onPressed: _debugMenuItems,
+                            icon: const Icon(Icons.bug_report),
+                            label: const Text('Debug'),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 );
               }
 
+              // Filter menu items
               final menuItems = snapshot.data!.where((item) {
                 if (_selectedCategory == 'All') return true;
                 return item.category == _selectedCategory;
               }).toList();
 
-              return ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: menuItems.length,
-                itemBuilder: (context, index) {
-                  final menuItem = menuItems[index];
-                  return _buildMenuItemCard(menuItem);
-                },
+              // Show success message with count
+              return Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    color: Colors.green[50],
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green[700], size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Found ${menuItems.length} menu item${menuItems.length != 1 ? 's' : ''}${_selectedCategory != 'All' ? ' in $_selectedCategory' : ''}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold, 
+                            color: Colors.green[700]
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: menuItems.length,
+                      itemBuilder: (context, index) {
+                        final menuItem = menuItems[index];
+                        return _buildMenuItemCard(menuItem);
+                      },
+                    ),
+                  ),
+                ],
               );
             },
           ),
@@ -385,7 +517,9 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> with Sing
                         menuItem: menuItem,
                       ),
                     ),
-                  );
+                  ).then((result) {
+                    if (result == true) setState(() {});
+                  });
                 } else if (value == 'delete') {
                   _showDeleteMenuItemDialog(menuItem);
                 }
@@ -440,6 +574,7 @@ class _RestaurantDetailsPageState extends State<RestaurantDetailsPage> with Sing
             onPressed: () async {
               await FirestoreService.deleteMenuItem(widget.restaurant.id, menuItem.id);
               Navigator.pop(context);
+              setState(() {});
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
